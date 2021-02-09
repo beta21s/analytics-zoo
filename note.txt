@@ -67,3 +67,39 @@ python predict.py model_path=/home/at/Desktop/final.model img_path=/home/at/Desk
 
 
 sudo docker run -it --rm --net=host -v /home/at/Desktop/docker:/opt/work/data  -e NotebookPort=12345 -e NotebookToken="fit2020" intelanalytics/analytics-zoo:latest bash
+
+
+
+
+
+import os,json, cv2
+os.environ["JAVA_HOME"] = "/usr/lib/jvm/java-8-openjdk-amd64"
+os.environ["SPARK_DRIVER_MEMORY"] = "8g"
+
+from zoo.common.nncontext import *
+from zoo.models.image.objectdetection import *
+
+from zoo.models.image.common.image_config import ImageConfigure
+from zoo.feature.image.imagePreprocessing import ImageResize
+from zoo.feature.common import ChainedPreprocessing
+
+
+sc = init_nncontext()
+model = ObjectDetector.load_model("/home/at/Desktop/xe_final.model")
+
+print('done')
+
+preprocess = ChainedPreprocessing([ImageResize(300, 300), ImageChannelNormalize(123.0, 117.0, 104.0), ImageMatToTensor(), ImageSetToSample()])
+postprocess = ScaleDetection()
+
+label_map = {0: '__background__', 1: 'African_hunting_dog'}
+config = ImageConfigure(preprocess, postprocess, 2, label_map)
+
+image_set = ImageSet.read('/home/at/Desktop/img-3.png', sc)
+output = model.predict_image_set(image_set, config)
+
+visualizer = Visualizer(config.label_map(), encoding="png")
+visualized = visualizer(output).get_image(to_chw=False).collect()
+
+for img_id in range(len(visualized)):
+    cv2.imwrite('zzzz.png', visualized[img_id])
